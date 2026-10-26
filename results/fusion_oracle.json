@@ -1,0 +1,25 @@
+{
+  "all": {
+    "PQ": 97.48,
+    "PQ_th": 94.01,
+    "PQ_st": 100.0,
+    "SQ_th": 96.87,
+    "RQ_th": 96.85
+  },
+  "with_same_class_overlap": {
+    "PQ": 96.26,
+    "PQ_th": 91.13,
+    "PQ_st": 100.0,
+    "SQ_th": 95.76,
+    "RQ_th": 94.67
+  },
+  "without_same_class_overlap": {
+    "PQ": 98.58,
+    "PQ_th": 96.63,
+    "PQ_st": 100.0,
+    "SQ_th": 97.7,
+    "RQ_th": 98.83
+  },
+  "images_with_overlap": 350,
+  "images": 998
+}
