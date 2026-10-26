@@ -26,11 +26,17 @@ from .scoring import Accumulator, eval_image
 # --------------------------------------------------------------------------- tracking
 
 class Tracker:
-    """Thin MLflow wrapper; training still works (and writes metrics.json) if MLflow is missing."""
+    """Optional live MLflow logging (ROADSIGHT_MLFLOW=1). Off by default.
+
+    MLflow starts background threads; DataLoader / evaluation workers are then forked from a
+    multi-threaded process, and a worker can inherit a lock held at fork time and deadlock
+    (this happened on the pod). Runs always write config.yaml, train_log.csv and metrics.json,
+    and tools/log_to_mlflow.py imports those into MLflow afterwards.
+    """
 
     def __init__(self, name, cfg):
         self.mlflow = None
-        if os.environ.get("ROADSIGHT_MLFLOW", "1") == "0":
+        if os.environ.get("ROADSIGHT_MLFLOW", "0") != "1":
             return
         try:
             import mlflow
