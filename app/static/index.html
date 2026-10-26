@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RoadSight</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5d6676; --line: #dfe3ea;
+    --accent: #2f6fde; --accent-text: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #12151b; --panel: #1b2029; --text: #e6e9ef; --muted: #9aa3b2; --line: #2c3340;
+            --accent: #5b8ff0; --accent-text: #0d1117; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 20px; color: var(--muted); }
+  .drop { border: 2px dashed var(--line); border-radius: 10px; background: var(--panel); padding: 28px;
+          text-align: center; cursor: pointer; }
+  .drop.over { border-color: var(--accent); }
+  button { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 6px;
+           padding: 8px 16px; font: inherit; cursor: pointer; }
+  .grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr); gap: 20px; margin-top: 20px; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  img { width: 100%; border-radius: 6px; display: block; }
+  .summary { font-size: 17px; font-weight: 600; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .err { color: #d14343; }
+</style>
+</head>
+<body>
+<main>
+  <h1>RoadSight</h1>
+  <p class="sub">Drop a dashcam frame. One model labels the road scene pixel by pixel and finds countable objects;
+    everything runs on the CPU.</p>
+
+  <label class="drop" id="drop">
+    <input type="file" id="file" accept="image/*" hidden>
+    <div><strong>Choose an image</strong> or drag it here</div>
+    <div class="muted">JPEG or PNG, ideally 1280×720</div>
+  </label>
+
+  <div class="grid" id="result" hidden>
+    <div class="panel"><img id="overlay" alt="Panoptic overlay"></div>
+    <div class="panel">
+      <div class="summary" id="summary"></div>
+      <div class="muted" id="timing"></div>
+      <h3>Objects</h3>
+      <table><thead><tr><th>Object</th><th>Score</th><th>Pixels</th></tr></thead><tbody id="objects"></tbody></table>
+      <p class="muted">Traffic lights, signs and poles are coloured as background regions: the training data has
+        no instance masks for them. The summary is rule-based on top of the model output.</p>
+    </div>
+  </div>
+  <p class="err" id="error"></p>
+</main>
+<script>
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('file');
+['dragover', 'dragenter'].forEach(e => drop.addEventListener(e, ev => { ev.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(e => drop.addEventListener(e, () => drop.classList.remove('over')));
+drop.addEventListener('drop', ev => { ev.preventDefault(); if (ev.dataTransfer.files[0]) run(ev.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) run(fileInput.files[0]); });
+
+async function run(file) {
+  document.getElementById('error').textContent = '';
+  drop.querySelector('strong').textContent = 'Working…';
+  const body = new FormData();
+  body.append('file', file);
+  try {
+    const res = await fetch('predict', { method: 'POST', body });
+    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+    const r = await res.json();
+    document.getElementById('overlay').src = 'data:image/jpeg;base64,' + r.overlay_jpeg_base64;
+    document.getElementById('summary').textContent = r.summary.text;
+    const t = r.timings;
+    document.getElementById('timing').textContent =
+      `${r.model} · ${t.total_ms} ms total (model ${t.model_ms}, pre ${t.pre_ms}, post ${t.post_ms})`;
+    const rows = r.instances.map(i =>
+      `<tr><td>${i.name}</td><td>${i.score.toFixed(2)}</td><td>${i.area}</td></tr>`).join('');
+    document.getElementById('objects').innerHTML = rows || '<tr><td colspan="3" class="muted">none</td></tr>';
+    document.getElementById('result').hidden = false;
+  } catch (e) {
+    document.getElementById('error').textContent = 'Error: ' + e.message;
+  } finally {
+    drop.querySelector('strong').textContent = 'Choose an image';
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+# Defaults shared by every experiment. Other configs say `base: base.yaml` and override fields.
+name: base
+model:
+  backbone: resnet18        # resnet18 | resnet50 | mobilenet_v3_large
+  pretrained: imagenet      # imagenet | coco_fcos (resnet50 only) | none
+  fpn_channels: 256
+  head_convs: 4             # convs per FCOS tower
+  sem_channels: 128
+  sem_from: p2              # p2 (1/4 resolution) | p3 (1/8)
+  tasks: [det, sem]
+data:
+  root: data/bdd10k
+  size: [640, 360]          # (width, height) at scale 1.0
+  train_scale: [0.75, 1.25] # one random scale per batch
+  batch_size: 16
+  workers: 5                # per job; 3 jobs share ~14 CPU cores on the pod
+train:
+  epochs: 24
+  lr: 2.0e-4                # AdamW, batch 16
+  weight_decay: 0.05
+  warmup_iters: 500
+  clip_grad: 10.0
+  amp: bf16
+  seed: 0
+  loss:
+    weighting: fixed        # fixed | uncertainty
+    sem_weight: 1.0
+  distill: null             # {teacher: runs/<name>, temperature, sem_weight, det_weight}
+  prune: null               # {amount: 0.5} together with init: runs/<name>
+  init: null
+eval:
+  splits: [holdout, val]
+  dump: false               # save raw outputs for offline fusion tuning / error analysis
+  score_thr: 0.05
+  nms_iou: 0.6
+  max_det: 100
+  fusion:
+    score_thr: 0.4
+    fill_thr: 0.2
+    stuff_area: 0.002
+    thin_stuff_area: 0.0

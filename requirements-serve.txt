@@ -1,0 +1,8 @@
+# Demo API only: no PyTorch
+numpy
+opencv-python-headless
+pillow
+onnxruntime
+fastapi
+uvicorn
+python-multipart

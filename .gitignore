@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+data/
+runs/*/model.pt
+runs/*/dumps/
+runs/mlflow.db
+mlruns/
+logs/
+models/*.onnx
+!models/.gitkeep

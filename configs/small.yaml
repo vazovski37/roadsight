@@ -1,0 +1,9 @@
+# Reproduction config for a free GPU (Kaggle / Colab T4): the lite ResNet-18 at 640x360, 12 epochs.
+base: r18_lite.yaml
+name: small
+data:
+  workers: 4
+train:
+  epochs: 12
+eval:
+  dump: false

@@ -1,0 +1,16 @@
+# Quality ceiling (ladder step 0): ResNet-50 FPN, COCO FCOS init, full 1280x720 resolution.
+# Trained with scale jitter 0.5-1.0 so it is also a usable distillation teacher at 640x360.
+base: base.yaml
+name: teacher_r50
+model:
+  backbone: resnet50
+  pretrained: coco_fcos
+data:
+  size: [1280, 720]
+  train_scale: [0.5, 1.0]
+  batch_size: 8
+train:
+  epochs: 16
+  lr: 1.0e-4
+eval:
+  dump: true

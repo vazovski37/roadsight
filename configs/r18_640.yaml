@@ -1,0 +1,5 @@
+# Student baseline: ResNet-18 FPN at 640x360, both heads at full width.
+base: base.yaml
+name: r18_640
+eval:
+  dump: true

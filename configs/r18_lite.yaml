@@ -1,0 +1,9 @@
+# Ladder step 3 (model size): narrower FPN/heads (256 -> 128, FCOS towers 4 -> 2 convs, semantic 128 -> 64).
+base: base.yaml
+name: r18_lite
+model:
+  fpn_channels: 128
+  head_convs: 2
+  sem_channels: 64
+eval:
+  dump: true

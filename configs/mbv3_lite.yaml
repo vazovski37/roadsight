@@ -1,0 +1,5 @@
+# Ladder step 3: MobileNetV3-Large backbone with the lite heads.
+base: r18_lite.yaml
+name: mbv3_lite
+model:
+  backbone: mobilenet_v3_large

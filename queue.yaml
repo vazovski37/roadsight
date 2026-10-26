@@ -1,0 +1,43 @@
+# Experiment queue for tools/run_queue.py. One hypothesis per run; see docs/EXPERIMENTS.md.
+# --- ladder step 0: quality ceiling
+- {name: teacher_r50, config: configs/teacher_r50.yaml}
+# --- student baseline + noise floor (3 seeds)
+- {name: r18_640, config: configs/r18_640.yaml}
+- {name: r18_640_s1, config: configs/r18_640.yaml, set: [train.seed=1, eval.dump=false]}
+- {name: r18_640_s2, config: configs/r18_640.yaml, set: [train.seed=2, eval.dump=false]}
+# --- E1: is one shared model worth it? (single-task models with identical settings)
+- {name: r18_det, config: configs/r18_640.yaml, set: ["model.tasks=[det]", eval.dump=false]}
+- {name: r18_sem, config: configs/r18_640.yaml, set: ["model.tasks=[sem]", eval.dump=false]}
+# --- E2: loss balance
+- {name: r18_w05, config: configs/r18_640.yaml, set: [train.loss.sem_weight=0.5, eval.dump=false]}
+- {name: r18_w2, config: configs/r18_640.yaml, set: [train.loss.sem_weight=2.0, eval.dump=false]}
+- {name: r18_unc, config: configs/r18_640.yaml, set: [train.loss.weighting=uncertainty, eval.dump=false]}
+# --- E3: initialisation (ResNet-50 at 640x360)
+- {name: r50_640_coco, config: configs/r18_640.yaml, set: [model.backbone=resnet50, model.pretrained=coco_fcos, eval.dump=false]}
+- {name: r50_640_imnet, config: configs/r18_640.yaml, set: [model.backbone=resnet50, eval.dump=false]}
+# --- E4: semantic head at 1/4 (P2) vs 1/8 (P3)
+- {name: r18_p3, config: configs/r18_640.yaml, set: [model.sem_from=p3, eval.dump=false]}
+# --- ladder step 2: train at other resolutions
+- {name: r18_512, config: configs/r18_640.yaml, set: ["data.size=[512,288]", eval.dump=false]}
+- {name: r18_960, config: configs/r18_640.yaml, set: ["data.size=[960,540]", eval.dump=false]}
+# --- ladder step 3: model size
+- {name: r18_lite, config: configs/r18_lite.yaml}
+- {name: r18_lite_p3, config: configs/r18_lite.yaml, set: [model.sem_from=p3]}
+- {name: mbv3_lite, config: configs/mbv3_lite.yaml}
+# --- ladder step 4: distillation from the teacher
+- {name: r18_lite_kd, config: configs/r18_lite.yaml, after: [teacher_r50],
+   set: ["train.distill={teacher: runs/teacher_r50, temperature: 2.0, sem_weight: 1.0, det_weight: 1.0}"]}
+- {name: mbv3_lite_kd, config: configs/mbv3_lite.yaml, after: [teacher_r50],
+   set: ["train.distill={teacher: runs/teacher_r50, temperature: 2.0, sem_weight: 1.0, det_weight: 1.0}"]}
+# --- ladder step 6b/c: 50% magnitude pruning + short fine-tune
+- {name: r18_lite_prune50, config: configs/r18_lite.yaml, after: [r18_lite],
+   set: [train.init=runs/r18_lite, "train.prune={amount: 0.5}", train.epochs=4, train.warmup_iters=100, train.lr=5.0e-5]}
+# --- free-GPU reproduction config (timed on this GPU)
+- {name: small, config: configs/small.yaml}
+# --- E1 combined: det-only + sem-only models fused into one panoptic output
+- {name: e1_separate, after: [r18_det, r18_sem], cmd: "python tools/evaluate.py runs/r18_det runs/r18_sem --split val --out results/e1_separate.json"}
+# --- ladder step 2 (test-time only): same weights, smaller/larger input
+- {name: tt_teacher_960, after: [teacher_r50], cmd: "python tools/evaluate.py runs/teacher_r50 --split val --size 960 540 --out results/tt_teacher_960.json"}
+- {name: tt_teacher_640, after: [teacher_r50], cmd: "python tools/evaluate.py runs/teacher_r50 --split val --size 640 360 --out results/tt_teacher_640.json"}
+- {name: tt_r18_512, after: [r18_640], cmd: "python tools/evaluate.py runs/r18_640 --split val --size 512 288 --out results/tt_r18_512.json"}
+- {name: tt_r18_960, after: [r18_640], cmd: "python tools/evaluate.py runs/r18_640 --split val --size 960 540 --out results/tt_r18_960.json"}

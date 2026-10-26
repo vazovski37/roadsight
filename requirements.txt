@@ -1,0 +1,21 @@
+# Training / evaluation (PyTorch is installed separately to match your CUDA, see README)
+torch>=2.4
+torchvision>=0.19
+numpy
+opencv-python-headless
+pillow
+pyarrow
+pyyaml
+scipy
+pycocotools
+mlflow-skinny
+sqlalchemy
+alembic
+# Export / optimisation / benchmarking
+onnx
+onnxscript
+onnxruntime
+onnxconverter-common
+psutil
+py-cpuinfo
+pytest
