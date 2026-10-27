@@ -4,6 +4,11 @@
 
 Uses the same post-processing and metrics as the PyTorch evaluation (roadsight.scoring), so the
 numbers in the optimisation table differ only because of the model variant.
+
+--dump DIR also writes the raw outputs to DIR/dumps/<split>/*.npz, the layout tune_fusion.py and
+error_analysis.py read, so fusion tuning and error analysis can run on the deployed (INT8) model:
+
+    python tools/onnx_eval.py models/roadsight_int8.onnx --split holdout --dump runs_onnx/roadsight_int8
 """
 import argparse
 import json
@@ -22,7 +27,7 @@ from roadsight.scoring import Accumulator, eval_image  # noqa: E402
 DET_CFG = {"score_thr": 0.05, "nms_iou": 0.6, "max_det": 100}
 
 
-def evaluate_onnx(model, data_root, split, workers, limit=0, fusion=None):
+def evaluate_onnx(model, data_root, split, workers, limit=0, fusion=None, dump=None):
     meta = json.loads(Path(model).with_suffix(".json").read_text())
     w, h = meta["size"]
     sess = ort.InferenceSession(str(model), providers=["CPUExecutionProvider"])
@@ -31,6 +36,11 @@ def evaluate_onnx(model, data_root, split, workers, limit=0, fusion=None):
         names = names[:limit]
     ann = json.loads(Path(data_root, "annotations.json").read_text())
     acc = Accumulator()
+    dump_dir = None
+    if dump:
+        dump_dir = Path(dump, "dumps", split)
+        dump_dir.mkdir(parents=True, exist_ok=True)
+        dump_dir = str(dump_dir)
     with ProcessPoolExecutor(workers) as pool:
         futures = []
         for name in names:
@@ -39,7 +49,8 @@ def evaluate_onnx(model, data_root, split, workers, limit=0, fusion=None):
             if "scores" in outs:
                 keep = outs["scores"].max(1) > DET_CFG["score_thr"]
                 outs["scores"], outs["boxes"] = outs["scores"][keep], outs["boxes"][keep]
-            futures.append(pool.submit(eval_image, data_root, name, outs, (w, h), DET_CFG, fusion or meta["fusion"]))
+            futures.append(pool.submit(eval_image, data_root, name, outs, (w, h), DET_CFG, fusion or meta["fusion"],
+                                       dump_dir))
         for f in futures:
             acc.add(f.result())
     return acc.metrics(names, {n: ann[n] for n in names})
@@ -53,10 +64,11 @@ def main():
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--out-dir", default="results/onnx")
+    ap.add_argument("--dump", default=None, help="write raw outputs under DIR/dumps/<split> (one model only)")
     a = ap.parse_args()
     Path(a.out_dir).mkdir(parents=True, exist_ok=True)
     for m in a.models:
-        metrics = evaluate_onnx(m, a.data_root, a.split, a.workers, a.limit)
+        metrics = evaluate_onnx(m, a.data_root, a.split, a.workers, a.limit, dump=a.dump)
         metrics.update({"model": m, "split": a.split})
         Path(a.out_dir, f"{Path(m).stem}_{a.split}.json").write_text(json.dumps(metrics, indent=2))
         print(f"{Path(m).stem:28s} " + ", ".join(f"{k} {metrics[k]:.2f}" for k in

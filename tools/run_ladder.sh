@@ -26,6 +26,7 @@ export_run r18_960 960 540 r18_960
 export_run r18_640 640 360 r18_640
 export_run r18_512 512 288 r18_512
 export_run r50_640_coco 640 360 r50_640_coco
+export_run r50_640_kd 640 360 r50_640_kd
 export_run r18_lite 640 360 r18_lite
 export_run r18_lite_p3 640 360 r18_lite_p3
 export_run mbv3_lite 640 360 mbv3_lite
@@ -36,8 +37,11 @@ export_run r18_lite_prune50 640 360 r18_lite_prune50
 
 # step 5 / 6a: quantise the chosen student (FP16, INT8, INT8 with FP32 prediction layers)
 [ -f "$M/${CHOSEN}_int8.onnx" ] || $PY tools/quantize.py "$M/$CHOSEN.onnx" --data-root "$DATA"
-# INT8 also for the full-width baseline, to see how quantisation interacts with model size
-[ -f "$M/r18_640_int8.onnx" ] || $PY tools/quantize.py "$M/r18_640.onnx" --data-root "$DATA" --skip-fp16
+# INT8 also for the full-width models: the heads, not the backbone, dominate latency, so a
+# quantised R50 student can still fit the budget
+for m in r18_640 r50_640_coco r50_640_kd r18_lite mbv3_lite_kd; do
+  [ -f "$M/${m}_int8.onnx" ] || [ "$m" = "$CHOSEN" ] || $PY tools/quantize.py "$M/$m.onnx" --data-root "$DATA" --skip-fp16
+done
 
 # accuracy of every ONNX variant on val (FP16 is evaluated separately: it may be impractically slow)
 MODELS=$(ls $M/*.onnx | grep -v -e _fp16 -e _prep)

@@ -4,9 +4,15 @@
 
 Writes next to the input:
   *_fp16.onnx        weights and activations in float16 (inputs/outputs stay float32)
-  *_int8.onnx        static post-training quantisation, QDQ format, per-channel weights (U8/S8)
-  *_int8mix.onnx     same, but the final prediction convs stay float32 (mixed precision)
+  *_int8naive.onnx   static post-training quantisation of every supported op, QDQ format,
+                     per-channel weights (U8/S8) - kept as the documented failure case
+  *_int8.onnx        same, but the decode subgraph after the prediction convs stays float32
+  *_int8mix.onnx     same as int8, and the prediction convs themselves stay float32 too
 Calibration uses training-side images (holdout split), never the val split we report on.
+
+Why int8naive fails: without an op filter ORT also quantises the decode ops (Concat/Add/Sub/Mul
+after the heads). Box coordinates of all levels share one uint8 scale over 0..W pixels, i.e.
+~2.5 px steps at 640x360, which destroys small boxes (AP_S halves) while PQ barely moves.
 """
 import argparse
 import sys
@@ -43,11 +49,33 @@ def to_fp16(src, dst):
     onnx.save(model, dst)
 
 
-def to_int8(src, dst, reader_fn, exclude_sensitive, method):
+def downstream(graph, roots):
+    """Names of every node fed (directly or not) by the outputs of the `roots` nodes."""
+    consumers = {}
+    for n in graph.node:
+        for t in n.input:
+            consumers.setdefault(t, []).append(n)
+    seen, stack = set(), [t for n in graph.node if n.name in roots for t in n.output]
+    while stack:
+        for n in consumers.get(stack.pop(), []):
+            if n.name not in seen:
+                seen.add(n.name)
+                stack.extend(n.output)
+    return seen
+
+
+def to_int8(src, dst, reader_fn, mode, method):
+    """mode: 'naive' quantises everything, 'int8' keeps the decode ops float, 'mix' also the prediction convs."""
     prep = str(dst).replace(".onnx", "_prep.onnx")
     quant_pre_process(str(src), prep, skip_symbolic_shape=True)
-    nodes = [n.name for n in onnx.load(prep).graph.node]
-    exclude = [n for n in nodes if exclude_sensitive and any(s in n for s in SENSITIVE)]
+    graph = onnx.load(prep).graph
+    heads = {n.name for n in graph.node if any(s in n.name for s in SENSITIVE)}
+    exclude = set()
+    if mode in ("int8", "mix"):
+        exclude |= downstream(graph, heads)
+    if mode == "mix":
+        exclude |= heads
+    exclude = sorted(exclude)
     quantize_static(prep, str(dst), reader_fn(), quant_format=QuantFormat.QDQ, per_channel=True,
                     activation_type=QuantType.QUInt8, weight_type=QuantType.QInt8,
                     calibrate_method=method, nodes_to_exclude=exclude,
@@ -76,11 +104,10 @@ def main():
     if not a.skip_fp16:
         to_fp16(src, f"{stem}_fp16.onnx")
         print("wrote", f"{stem}_fp16.onnx")
-    to_int8(src, Path(f"{stem}_int8.onnx"), reader_fn, False, method)
-    print("wrote", f"{stem}_int8.onnx")
-    excluded = to_int8(src, Path(f"{stem}_int8mix.onnx"), reader_fn, True, method)
-    print("wrote", f"{stem}_int8mix.onnx", "(float32 kept for:", ", ".join(excluded) + ")")
-    for suffix in ("_fp16", "_int8", "_int8mix"):
+    for mode, suffix in (("naive", "_int8naive"), ("int8", "_int8"), ("mix", "_int8mix")):
+        excluded = to_int8(src, Path(f"{stem}{suffix}.onnx"), reader_fn, mode, method)
+        print("wrote", f"{stem}{suffix}.onnx", f"({len(excluded)} nodes kept float32)")
+    for suffix in ("_fp16", "_int8naive", "_int8", "_int8mix"):
         p = Path(f"{stem}{suffix}.onnx")
         if p.exists():
             meta = json.loads(src.with_suffix(".json").read_text())

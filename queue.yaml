@@ -29,6 +29,17 @@
    set: ["train.distill={teacher: runs/teacher_r50, temperature: 2.0, sem_weight: 1.0, det_weight: 1.0}"]}
 - {name: mbv3_lite_kd, config: configs/mbv3_lite.yaml, after: [teacher_r50],
    set: ["train.distill={teacher: runs/teacher_r50, temperature: 2.0, sem_weight: 1.0, det_weight: 1.0}"]}
+# added after the first CPU measurements: R50 + INT8 fits the 100 ms budget, so distil into it too
+- {name: r50_640_kd, config: configs/r18_640.yaml, after: [teacher_r50],
+   set: [model.backbone=resnet50, model.pretrained=coco_fcos, eval.dump=false,
+         "train.distill={teacher: runs/teacher_r50, temperature: 2.0, sem_weight: 1.0, det_weight: 1.0}"]}
+# lite heads cut CPU latency 2.6x for -0.5 PQ, which leaves room for R50 + lite heads, also at 800x450
+- {name: r50_lite_kd, config: configs/r18_lite.yaml, after: [teacher_r50],
+   set: [model.backbone=resnet50, model.pretrained=coco_fcos, eval.dump=false,
+         "train.distill={teacher: runs/teacher_r50, temperature: 2.0, sem_weight: 1.0, det_weight: 1.0}"]}
+- {name: r50_lite_kd_800, config: configs/r18_lite.yaml, after: [teacher_r50],
+   set: [model.backbone=resnet50, model.pretrained=coco_fcos, eval.dump=false, "data.size=[800,450]",
+         "train.distill={teacher: runs/teacher_r50, temperature: 2.0, sem_weight: 1.0, det_weight: 1.0}"]}
 # --- ladder step 6b/c: 50% magnitude pruning + short fine-tune
 - {name: r18_lite_prune50, config: configs/r18_lite.yaml, after: [r18_lite],
    set: [train.init=runs/r18_lite, "train.prune={amount: 0.5}", train.epochs=4, train.warmup_iters=100, train.lr=5.0e-5]}

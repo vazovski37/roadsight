@@ -10,3 +10,4 @@ mlruns/
 logs/
 models/*.onnx
 !models/.gitkeep
+runs_onnx/

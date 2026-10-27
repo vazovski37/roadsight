@@ -189,6 +189,11 @@ def load_coco_fcos(model):
             mapped[k.replace("head.regression_head.bbox_ctrness.", "det_head.bbox_ctrness.")] = v
     if "det" not in model.tasks:
         mapped = {k: v for k, v in mapped.items() if not k.startswith("det_head.")}
+    # lite models (128-channel FPN, 2-conv towers) can only take what fits: the backbone always does
+    own = model.state_dict()
+    skipped = [k for k, v in mapped.items() if k not in own or own[k].shape != v.shape]
+    assert not any(k.startswith("backbone.body.") for k in skipped), "COCO backbone must load completely"
+    mapped = {k: v for k, v in mapped.items() if k not in skipped}
     missing, unexpected = model.load_state_dict(mapped, strict=False)
     assert not unexpected, unexpected
     return missing
