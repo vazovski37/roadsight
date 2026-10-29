@@ -1,4 +1,4 @@
-# Experiment queue for tools/run_queue.py. One hypothesis per run; see docs/EXPERIMENTS.md.
+# Experiment queue for tools/run_queue.py. One hypothesis per run; results in docs/REPORT.ka.md (section 3).
 # --- ladder step 0: quality ceiling
 - {name: teacher_r50, config: configs/teacher_r50.yaml}
 # --- student baseline + noise floor (3 seeds)

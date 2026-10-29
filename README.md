@@ -17,7 +17,26 @@ Results, the experiment log and the reasoning behind every choice are in
 (all tables, generated). The original proposal is [`docs/PROPOSAL.ka.md`](docs/PROPOSAL.ka.md); how AI tools
 were used is in [`docs/AI_USAGE.ka.md`](docs/AI_USAGE.ka.md).
 
-<!-- RESULTS_TABLE -->
+## Results
+
+val split (998 images). Latency: end-to-end median on an i9-14900KF, 4 threads pinned to 4 performance cores.
+
+| model | runtime | PQ | mAP | mIoU | mIoU thin | latency | file |
+|---|---|---|---|---|---|---|---|
+| teacher: ResNet-50, 1280×720 | PyTorch FP32 | 39.8 | 28.2 | 58.1 | 49.9 | 1310 ms | 137 MB |
+| deployed network, 800×450 | PyTorch FP32 | 37.1 | 21.0 | 58.7 | 44.5 | 304 ms | 103 MB |
+| same | ONNX Runtime FP32 | 37.1 | 21.0 | 58.7 | 44.5 | 182 ms | 104 MB |
+| same | ONNX Runtime INT8 | 36.8 | 21.0 | 58.5 | 44.3 | 72 ms | 27 MB |
+| **`models/roadsight_int8.onnx`** (INT8 + fusion tuned on holdout) | ONNX Runtime INT8 | **37.0** | 21.0 | 58.5 | 44.3 | **73 ms** | 27 MB |
+
+The deployed network is a ResNet-50 with slim heads (128-channel FPN, 2-conv FCOS towers), distilled from the
+teacher. It is 18× faster than the teacher for −2.8 PQ; the loss falls on small and thin objects (AP_S 17.1 → 8.3).
+The working point was chosen by a rule fixed before measuring: highest PQ within 100 ms. Nothing reached 33 ms
+without a large accuracy drop, so this is not called real-time.
+
+![PQ vs CPU latency](results/figures/pareto_pq_latency.png)
+
+![input | ground truth | prediction](results/samples/grid.jpg)
 
 ## Repository layout
 
@@ -66,8 +85,10 @@ python tools/run_queue.py queue.yaml --slots 3                    # the whole ex
 ```
 
 Each run writes `runs/<name>/{config.yaml, train_log.csv, model.pt, metrics.json}`; metrics are on the
-500-image holdout and the 998-image val split. `configs/small.yaml` reproduces the deployed model family on a
-free GPU (Kaggle/Colab T4).
+500-image holdout and the 998-image val split. The deployed model is `runs/r50_lite_kd_800` (trained with
+`queue.yaml`, after `teacher_r50`). `configs/small.yaml` (slim ResNet-18, 12 epochs) is the reduced config for a free
+GPU; [`notebooks/reproduce_small.ipynb`](notebooks/reproduce_small.ipynb) runs it on Kaggle/Colab (its T4 run time
+has not been measured).
 
 Experiment tracking: `python tools/log_to_mlflow.py` imports every run and evaluation into an MLflow store
 (`mlruns/`); view it with `pip install mlflow && mlflow ui --backend-store-uri ./mlruns`.
@@ -85,16 +106,22 @@ python tools/fusion_oracle.py                                         # upper bo
 ## Optimisation and CPU deployment
 
 ```bash
-python tools/export_onnx.py runs/r18_lite_kd --size 640 360 --out models/r18_lite_kd.onnx
-python tools/quantize.py models/r18_lite_kd.onnx           # FP16, INT8, INT8 with FP32 prediction layers
-python tools/onnx_eval.py models/r18_lite_kd_int8.onnx      # accuracy of the exported model on CPU
+python tools/export_onnx.py runs/r50_lite_kd_800 --size 800 450 --out models/r50_lite_kd_800.onnx
+python tools/quantize.py models/r50_lite_kd_800.onnx --skip-fp16  # INT8, INT8 with FP32 last layers, naive INT8
+python tools/onnx_eval.py models/r50_lite_kd_800_int8.onnx         # accuracy of the exported model on CPU
 python tools/benchmark.py models/*.onnx --threads 4 --cpus 0 2 4 6
-bash tools/run_ladder.sh                                     # the whole ladder
-python tools/make_report.py                                  # tables + figures -> results/
+bash tools/run_ladder.sh          # the whole ladder, then the deployed model (fusion tuned on holdout)
+python tools/visualize.py models/roadsight_int8.onnx   # input | ground truth | prediction -> results/samples/
+python tools/make_report.py       # tables + figures -> results/
 ```
 
 Latency protocol: ONNX Runtime CPU, batch 1, 4 threads pinned to four performance cores, 20 warm-up frames
 then 200 val frames; median and p90 of preprocessing + model + post-processing (NMS, fusion, summary).
+`--cpus 0 2 4 6` fits a hybrid Intel CPU where logical CPUs 0–15 are performance-core threads; on other machines
+pick one thread per physical core. `benchmark.py` refuses to add results measured with different settings to an
+existing file.
+
+FP16 is not part of the results: converting the ResNet-50 models with `onnxconverter_common` took 17 GB of RAM.
 
 ## Demo
 
@@ -105,6 +132,10 @@ docker build -t roadsight . && docker run --rm -p 8000:8000 roadsight
 
 `POST /predict` (multipart `file`) returns objects, summary, timings and a base64 overlay;
 `POST /predict/image` returns the overlay JPEG; `GET /health`.
+
+The demo and API were tested locally with uvicorn. The Docker image's contents (exactly the files the Dockerfile
+copies, `requirements-serve.txt` only, no PyTorch) were tested in a clean virtual environment; `docker build` itself
+has not been run yet, because Docker Desktop failed to start on the development machine.
 
 ## Tests
 
