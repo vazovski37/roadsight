@@ -58,9 +58,3 @@ AI-ს ნათქვამი ფაქტად არ მიიღებო�
   პროტოკოლით, ხოლო `benchmark.py` ახლა ასეთ შემთხვევაში შეცდომით ჩერდება.
 - ერთ ვიზუალიზაციაზე AI-მ თქვა, რომ ავტობუსის პიქსელები არ გაფერადდა. პიქსელების შემოწმებით აღმოჩნდა, რომ
   ბოქსის 68% სწორად არის "bus"; უბრალოდ Cityscapes-ის მუქი ფერი ყვითელ ავტობუსზე ცუდად ჩანს.
-
-## რა უნდა ვიცოდე მე, გასაუბრებისთვის
-
-AI-მ დაწერილი კოდი ჩემია მხოლოდ მაშინ, თუ მესმის. ამიტომ აუცილებლად გავდივარ:
-`roadsight/model.py` (backbone → FPN → ორი head), `roadsight/fcos.py` (target assignment და loss),
-`roadsight/postprocess.py` (NMS და fusion), `roadsight/metrics.py` (PQ), `roadsight/engine.py` (training loop).
