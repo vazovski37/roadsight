@@ -1,9 +1,9 @@
 {
-  "run": "../scratch_runs/smoke",
-  "name": "smoke",
+  "run": "runs/r50_lite_kd_800",
+  "name": "r50_lite_kd_800",
   "size": [
-    320,
-    180
+    800,
+    450
   ],
   "outputs": [
     "sem",
@@ -15,16 +15,18 @@
     "sem"
   ],
   "fusion": {
-    "score_thr": 0.4,
+    "score_thr": 0.5,
     "fill_thr": 0.2,
-    "stuff_area": 0.002,
+    "stuff_area": 0.004,
     "thin_stuff_area": 0.0
   },
   "check": {
     "sem_pixel_agreement": 1.0,
-    "scores_max_abs_diff": 1.2516975402832031e-06,
-    "boxes_max_abs_diff": 1.52587890625e-05
+    "scores_max_abs_diff": 2.061016857624054e-06,
+    "boxes_max_abs_diff": 0.00018310546875
   },
-  "params_M": 21.336037,
-  "variant": "int8"
+  "params_M": 25.846885,
+  "variant": "int8",
+  "deployed_from": "models/r50_lite_kd_800_int8.onnx",
+  "fusion_source": "results/fusion_roadsight_int8.json (tuned on holdout)"
 }

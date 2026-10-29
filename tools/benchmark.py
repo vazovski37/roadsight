@@ -115,7 +115,9 @@ def machine_info():
         flags = set(ci.get("flags", []))
         info.update({"cpu": ci.get("brand_raw"), "logical_cpus": os.cpu_count(),
                      "avx2": "avx2" in flags, "avx512f": "avx512f" in flags,
-                     "avx_vnni": "avxvnni" in flags or "avx_vnni" in flags, "avx512_vnni": "avx512_vnni" in flags,
+                     # py-cpuinfo does not read CPUID leaf 7.1, where AVX-VNNI lives: absent means "unknown"
+                     "avx_vnni": True if {"avxvnni", "avx_vnni"} & flags else "unknown",
+                     "avx512_vnni": "avx512_vnni" in flags,
                      "avx512_fp16": "avx512_fp16" in flags})
     except Exception as e:
         info["cpuinfo_error"] = str(e)
@@ -144,8 +146,10 @@ def main():
     out = Path(a.out)
     if out.exists():  # append/replace per model so the benchmark can be run in pieces
         old = json.loads(out.read_text())
-        if old.get("protocol") == results["protocol"]:
-            results["models"] = old["models"]
+        if old.get("protocol") != results["protocol"]:
+            # numbers from different protocols must not share a table, and silently starting over loses them
+            sys.exit(f"{out} was measured with {old.get('protocol')}; use the same settings or another --out")
+        results["models"] = old["models"]
     for m in a.models:
         cmd = [sys.executable, __file__, m, "--single", "--data-root", a.data_root, "--frames", str(a.frames),
                "--threads", str(a.threads), "--cpus", *map(str, a.cpus)]

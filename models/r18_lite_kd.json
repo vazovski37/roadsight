@@ -1,0 +1,29 @@
+{
+  "run": "runs/r18_lite_kd",
+  "name": "r18_lite_kd",
+  "size": [
+    640,
+    360
+  ],
+  "outputs": [
+    "sem",
+    "scores",
+    "boxes"
+  ],
+  "tasks": [
+    "det",
+    "sem"
+  ],
+  "fusion": {
+    "score_thr": 0.4,
+    "fill_thr": 0.2,
+    "stuff_area": 0.002,
+    "thin_stuff_area": 0.0
+  },
+  "check": {
+    "sem_pixel_agreement": 1.0,
+    "scores_max_abs_diff": 1.7248094081878662e-06,
+    "boxes_max_abs_diff": 0.00018310546875
+  },
+  "params_M": 13.190245
+}

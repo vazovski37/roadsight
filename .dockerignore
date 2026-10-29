@@ -1,5 +1,8 @@
 data
 runs
+runs_onnx
+models/*.onnx
+!models/roadsight_int8.onnx
 logs
 results
 docs

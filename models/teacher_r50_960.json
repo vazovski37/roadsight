@@ -1,0 +1,29 @@
+{
+  "run": "runs/teacher_r50",
+  "name": "teacher_r50",
+  "size": [
+    960,
+    540
+  ],
+  "outputs": [
+    "sem",
+    "scores",
+    "boxes"
+  ],
+  "tasks": [
+    "det",
+    "sem"
+  ],
+  "fusion": {
+    "score_thr": 0.4,
+    "fill_thr": 0.2,
+    "stuff_area": 0.002,
+    "thin_stuff_area": 0.0
+  },
+  "check": {
+    "sem_pixel_agreement": 1.0,
+    "scores_max_abs_diff": 2.109445631504059e-06,
+    "boxes_max_abs_diff": 0.000579833984375
+  },
+  "params_M": 34.361317
+}

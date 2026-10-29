@@ -99,6 +99,10 @@ def main():
                     front.append((ms, pq))
                     best = pq
             ax.plot(*zip(*front), "--", lw=1, color="gray", label="Pareto front")
+            deployed = json.loads(Path("models/roadsight_int8.json").read_text()).get("deployed_from", "")
+            for ms, pq, n in pts:
+                if Path(deployed).stem == n:
+                    ax.scatter(ms, pq, s=160, marker="*", color="red", zorder=3, label=f"deployed ({n})")
             ax.axvline(100, color="red", lw=1, ls=":", label="100 ms budget")
             ax.set_xscale("log")
             ax.set_xlabel("end-to-end latency, median ms (4 P-cores, log scale)")
@@ -121,7 +125,16 @@ def main():
             fig.tight_layout()
             fig.savefig(figs / "thin_classes_latency.png", dpi=140)
 
+    if (out / "fusion_oracle.json").exists():
+        o = json.loads((out / "fusion_oracle.json").read_text())
+        lines += ["", "## Fusion oracle (ground-truth boxes and semantics through the fusion step)", "",
+                  "| images | PQ | PQ_th | PQ_st |", "|---|---|---|---|"]
+        for k in ("all", "with_same_class_overlap", "without_same_class_overlap"):
+            lines.append(f"| {k} | {o[k]['PQ']:.2f} | {o[k]['PQ_th']:.2f} | {o[k]['PQ_st']:.2f} |")
+
     for p in sorted(out.glob("fusion_*.json")):
+        if p.stem == "fusion_oracle":
+            continue
         f = json.loads(p.read_text())
         lines += ["", f"## Fusion tuning ({p.stem})", "", f"best on holdout: `{f['best']}`", "",
                   "| setting | PQ | PQ_th | PQ_st |", "|---|---|---|---|"]
@@ -131,7 +144,7 @@ def main():
 
     # training curves
     fig, ax = plt.subplots(figsize=(8, 5))
-    for name in ("teacher_r50", "r18_640", "r18_lite", "mbv3_lite", "r18_lite_kd"):
+    for name in ("teacher_r50", "r18_640", "r18_lite", "mbv3_lite", "r18_lite_kd", "r50_lite_kd_800"):
         p = Path("runs", name, "train_log.csv")
         if p.exists():
             import csv
@@ -144,7 +157,7 @@ def main():
     fig.tight_layout()
     fig.savefig(figs / "training_loss.png", dpi=140)
 
-    (out / "summary.md").write_text("\n".join(lines) + "\n")
+    (out / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
 
 

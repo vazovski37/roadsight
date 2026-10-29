@@ -105,7 +105,9 @@ def summarize(cls_map, instances):
         x = float(np.mean(xs)) / w
         return "left" if x < 1 / 3 else ("right" if x > 2 / 3 else "centre")
 
-    parts = [f"{n} {name}{'s' if n > 1 else ''}" for name, n in sorted(counts.items(), key=lambda kv: -kv[1])]
+    plural = {"person": "people", "bus": "buses"}
+    parts = [f"{n} {plural.get(name, name + 's') if n > 1 else name}"
+             for name, n in sorted(counts.items(), key=lambda kv: -kv[1])]
     signals = {}
     for name in ("traffic light", "traffic sign"):
         ys, xs = np.nonzero(cls_map == SEM_CLASSES.index(name))

@@ -1,0 +1,48 @@
+name: r18_lite
+model:
+  backbone: resnet18
+  pretrained: imagenet
+  fpn_channels: 128
+  head_convs: 2
+  sem_channels: 64
+  sem_from: p2
+  tasks:
+  - det
+  - sem
+data:
+  root: data/bdd10k
+  size:
+  - 640
+  - 360
+  train_scale:
+  - 0.75
+  - 1.25
+  batch_size: 16
+  workers: 5
+train:
+  epochs: 24
+  lr: 0.0002
+  weight_decay: 0.05
+  warmup_iters: 500
+  clip_grad: 10.0
+  amp: bf16
+  seed: 0
+  loss:
+    weighting: fixed
+    sem_weight: 1.0
+  distill: null
+  prune: null
+  init: null
+eval:
+  splits:
+  - holdout
+  - val
+  dump: true
+  score_thr: 0.05
+  nms_iou: 0.6
+  max_det: 100
+  fusion:
+    score_thr: 0.4
+    fill_thr: 0.2
+    stuff_area: 0.002
+    thin_stuff_area: 0.0

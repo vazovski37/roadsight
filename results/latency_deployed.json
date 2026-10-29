@@ -1,0 +1,54 @@
+{
+  "machine": {
+    "platform": "Windows-10-10.0.26200-SP0",
+    "python": "3.11.9",
+    "cpu": "Intel(R) Core(TM) i9-14900KF",
+    "logical_cpus": 32,
+    "avx2": true,
+    "avx512f": false,
+    "avx_vnni": "unknown",
+    "avx512_vnni": false,
+    "avx512_fp16": false
+  },
+  "protocol": {
+    "threads": 4,
+    "cpus": [
+      0,
+      2,
+      4,
+      6
+    ],
+    "frames": 200,
+    "warmup": 20
+  },
+  "models": [
+    {
+      "pre_median_ms": 2.980949997436255,
+      "pre_p90_ms": 3.757299998687813,
+      "model_median_ms": 60.240050002903445,
+      "model_p90_ms": 62.329029999818886,
+      "post_median_ms": 9.480100001383107,
+      "post_p90_ms": 11.28538999837474,
+      "total_median_ms": 72.58894999904442,
+      "total_p90_ms": 75.55428999912692,
+      "model": "models/roadsight_int8.onnx",
+      "name": "roadsight_int8",
+      "runtime": "onnxruntime",
+      "size": [
+        800,
+        450
+      ],
+      "threads": 4,
+      "cpus": [
+        0,
+        2,
+        4,
+        6
+      ],
+      "frames": 200,
+      "file_mb": 26.940743,
+      "zipped_mb": 23.104425,
+      "peak_rss_mb": 873.271296
+    }
+  ]
+}

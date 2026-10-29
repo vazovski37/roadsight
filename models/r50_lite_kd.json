@@ -1,0 +1,29 @@
+{
+  "run": "runs/r50_lite_kd",
+  "name": "r50_lite_kd",
+  "size": [
+    640,
+    360
+  ],
+  "outputs": [
+    "sem",
+    "scores",
+    "boxes"
+  ],
+  "tasks": [
+    "det",
+    "sem"
+  ],
+  "fusion": {
+    "score_thr": 0.4,
+    "fill_thr": 0.2,
+    "stuff_area": 0.002,
+    "thin_stuff_area": 0.0
+  },
+  "check": {
+    "sem_pixel_agreement": 1.0,
+    "scores_max_abs_diff": 2.3227185010910034e-06,
+    "boxes_max_abs_diff": 0.000274658203125
+  },
+  "params_M": 25.846885
+}
